@@ -10,16 +10,6 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const demoCredential = {
-    email: 'anudeepkumar9347@gmail.com',
-    password: 'project-d'
-  };
-
-  const fillDemoCredentials = () => {
-    setEmail(demoCredential.email);
-    setPassword(demoCredential.password);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -91,17 +81,6 @@ export default function Login() {
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
-
-          <div className="mt-6">
-            <p className="text-sm text-gray-600 mb-3">Demo Account:</p>
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="w-full px-4 py-2 border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition"
-            >
-              {demoCredential.email}
-            </button>
-          </div>
         </form>
       </div>
     </div>
