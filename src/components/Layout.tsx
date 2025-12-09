@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ConnectionStatus from './ConnectionStatus';
 import { 
   LayoutDashboard, 
   Image, 
@@ -29,12 +30,16 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r">
+      <aside className="w-64 bg-white border-r flex flex-col">
         <div className="p-6">
           <h1 className="text-2xl font-bold text-primary-600">Embroidery Admin</h1>
         </div>
         
-        <nav className="px-4 space-y-1">
+        <div className="px-6 pb-4">
+          <ConnectionStatus />
+        </div>
+        
+        <nav className="px-4 space-y-1 flex-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -56,7 +61,7 @@ export default function Layout({ children }: LayoutProps) {
           })}
         </nav>
 
-        <div className="absolute bottom-0 w-64 p-4 border-t">
+        <div className="w-64 p-4 border-t mt-auto">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-gray-900">{user?.displayName}</p>
