@@ -1,9 +1,19 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
+import DesignForm from '../components/DesignForm';
+
+const formatInr = (cents: number) => {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(
+    cents / 100
+  );
+};
 
 export default function Designs() {
   const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [selectedDesign, setSelectedDesign] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['designs'],
@@ -20,11 +30,26 @@ export default function Designs() {
     },
   });
 
+  const handleEdit = (design: any) => {
+    setSelectedDesign(design);
+    setShowForm(true);
+  };
+
+  const handleAdd = () => {
+    setSelectedDesign(null);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setSelectedDesign(null);
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Designs</h1>
-        <button className="btn btn-primary flex items-center gap-2">
+        <button onClick={handleAdd} className="btn btn-primary flex items-center gap-2">
           <Plus size={20} />
           Add Design
         </button>
@@ -55,7 +80,7 @@ export default function Designs() {
                       </td>
                       <td className="py-3 px-4 font-medium">{design.title}</td>
                       <td className="py-3 px-4">{design.category?.name || 'N/A'}</td>
-                      <td className="py-3 px-4">${(design.price_cents / 100).toFixed(2)}</td>
+                      <td className="py-3 px-4">{formatInr(design.price_cents)}</td>
                       <td className="py-3 px-4">
                         <span
                           className={`px-2 py-1 rounded text-xs ${
@@ -69,10 +94,11 @@ export default function Designs() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 hover:bg-gray-100 rounded">
-                            <Eye size={16} />
-                          </button>
-                          <button className="p-2 hover:bg-gray-100 rounded">
+                          <button 
+                            onClick={() => handleEdit(design)}
+                            className="p-2 hover:bg-gray-100 rounded"
+                            title="Edit"
+                          >
                             <Edit size={16} />
                           </button>
                           <button
@@ -97,6 +123,10 @@ export default function Designs() {
           </div>
         )}
       </div>
+
+      {showForm && (
+        <DesignForm design={selectedDesign} onClose={handleCloseForm} />
+      )}
     </div>
   );
 }
