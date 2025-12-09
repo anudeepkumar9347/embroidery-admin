@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_SECRET_KEY = import.meta.env.VITE_API_SECRET_KEY;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,9 +10,15 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add API key and auth token
 api.interceptors.request.use(
   (config) => {
+    // Add API secret key if configured
+    if (API_SECRET_KEY) {
+      config.headers['x-api-key'] = API_SECRET_KEY;
+    }
+    
+    // Add JWT token
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
