@@ -1,16 +1,14 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 
 export default function Designs() {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['designs', page],
+    queryKey: ['designs'],
     queryFn: async () => {
-      const response = await api.get(`/admin/designs?page=${page}&limit=20`);
+      const response = await api.get(`/admin/designs?page=1&limit=20`);
       return response.data;
     },
   });

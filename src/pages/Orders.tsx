@@ -4,13 +4,12 @@ import api from '../lib/api';
 import { format } from 'date-fns';
 
 export default function Orders() {
-  const [page, setPage] = useState(1);
   const [status, setStatus] = useState('all');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', page, status],
+    queryKey: ['orders', status],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      const params = new URLSearchParams({ page: '1', limit: '20' });
       if (status !== 'all') params.append('status', status);
       const response = await api.get(`/admin/orders?${params}`);
       return response.data;
