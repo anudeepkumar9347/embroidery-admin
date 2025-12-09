@@ -13,6 +13,8 @@ const api = axios.create({
 // Request interceptor to add API key and auth token
 api.interceptors.request.use(
   (config) => {
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    
     // Add API secret key if configured
     if (API_SECRET_KEY) {
       config.headers['x-api-key'] = API_SECRET_KEY;
@@ -23,15 +25,32 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Set timeout to detect hanging requests
+    config.timeout = 30000; // 30 seconds
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Response interceptor to handle token refresh
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+    return response;
+  },
   async (error) => {
+    console.error('API Response Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data,
+    });
+    
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {

@@ -41,12 +41,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await api.post('/auth/admin-login', { email, password });
-    const { accessToken, refreshToken, user } = response.data;
+    console.log('AuthContext: Starting login process');
+    
+    try {
+      const response = await api.post('/auth/admin-login', { email, password });
+      console.log('AuthContext: Login response received', response.status);
+      
+      const { accessToken, refreshToken, user } = response.data;
 
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    setUser(user);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      setUser(user);
+      
+      console.log('AuthContext: Login successful, user set');
+    } catch (error) {
+      console.error('AuthContext: Login failed', error);
+      throw error;
+    }
   };
 
   const logout = () => {
