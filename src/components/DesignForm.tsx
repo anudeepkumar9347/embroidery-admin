@@ -8,19 +8,42 @@ interface DesignFormProps {
   onClose: () => void;
 }
 
+interface FormState {
+  title: string;
+  slug: string;
+  description: string;
+  priceCents: string | number;
+  categoryId: string;
+  collectionId: string;
+  stitches: string;
+  colors: string;
+  width_mm: string;
+  height_mm: string;
+  tags: string;
+  licenseType: string;
+  is_active: boolean;
+  is_featured: boolean;
+}
+
 export default function DesignForm({ design, onClose }: DesignFormProps) {
   const queryClient = useQueryClient();
   const isEditing = !!design;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormState>({
     title: design?.title || '',
     slug: design?.slug || '',
     description: design?.description || '',
     priceCents: design?.price_cents ? design.price_cents / 100 : '',
     categoryId: design?.category_id || '',
     collectionId: design?.collection_id || '',
+    stitches: design?.stitches || '',
+    colors: design?.colors || '',
+    width_mm: design?.width_mm || '',
+    height_mm: design?.height_mm || '',
     tags: design?.tags?.join(', ') || '',
     licenseType: design?.license_type || 'single-use',
+    is_active: design?.is_active ?? true,
+    is_featured: design?.is_featured ?? false,
   });
 
   const [designFile, setDesignFile] = useState<File | null>(null);
@@ -71,39 +94,27 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
     const priceValue = parseFloat(String(formData.priceCents));
     const tagsArray = formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
 
-    // Step 1: Create design record
-    let designPayload = {
-      title: formData.title,
-      slug: formData.slug,
-      description: formData.description,
-      priceCents: Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0,
-      categoryId: formData.categoryId || undefined,
-      collectionId: formData.collectionId || undefined,
-      tags: tagsArray,
-      licenseType: formData.licenseType,
-    };
+    const form = new FormData();
+    form.append('title', formData.title);
+    form.append('slug', formData.slug);
+    form.append('description', formData.description);
+    form.append('priceCents', String(Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0));
+    if (formData.categoryId) form.append('categoryId', formData.categoryId);
+    if (formData.collectionId) form.append('collectionId', formData.collectionId);
+    form.append('licenseType', formData.licenseType);
+    tagsArray.forEach((tag: string) => form.append('tags', tag));
+    form.append('designFile', designFile);
+    form.append('thumbnailFile', thumbnailFile);
 
     try {
-      const response = await api.post('/admin/designs', designPayload);
-      const { design, uploadUrls } = response.data;
-
-      // Step 2: Upload files to S3 using presigned URLs
-      // Asset file
-      await fetch(uploadUrls.asset, {
-        method: 'PUT',
-        body: designFile,
-        headers: { 'Content-Type': 'application/zip' },
+      await api.post('/admin/designs', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            setUploadProgress({ asset: Math.round((progressEvent.loaded / progressEvent.total) * 100) });
+          }
+        },
       });
-      setUploadProgress((prev) => ({ ...prev, asset: 100 }));
-
-      // Thumbnail file
-      await fetch(uploadUrls.thumbnail, {
-        method: 'PUT',
-        body: thumbnailFile,
-        headers: { 'Content-Type': 'image/jpeg' },
-      });
-      setUploadProgress((prev) => ({ ...prev, thumbnail: 100 }));
-
       queryClient.invalidateQueries({ queryKey: ['designs'] });
       onClose();
     } catch (err: any) {
@@ -174,6 +185,19 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Slug *
+              </label>
+              <input
+                type="text"
+                required
+                className="input"
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
               </label>
               <textarea
@@ -194,8 +218,8 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
                   step="0.01"
                   required
                   className="input"
-                  value={formData.price_cents}
-                  onChange={(e) => setFormData({ ...formData, price_cents: e.target.value })}
+                  value={formData.priceCents}
+                  onChange={(e) => setFormData({ ...formData, priceCents: e.target.value })}
                 />
               </div>
 
@@ -206,8 +230,8 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
                 <select
                   required
                   className="input"
-                  value={formData.category_id}
-                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                 >
                   <option value="">Select category</option>
                   {categories?.map((cat: any) => (
@@ -225,8 +249,8 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
               </label>
               <select
                 className="input"
-                value={formData.collection_id}
-                onChange={(e) => setFormData({ ...formData, collection_id: e.target.value })}
+                  value={formData.collectionId}
+                  onChange={(e) => setFormData({ ...formData, collectionId: e.target.value })}
               >
                 <option value="">No collection</option>
                 {collections?.map((col: any) => (
