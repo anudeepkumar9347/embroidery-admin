@@ -27,6 +27,11 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
     is_featured: design?.is_featured ?? false,
   });
 
+  const [designFile, setDesignFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ asset?: number; thumbnail?: number }>({});
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // Fetch categories and collections
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -57,22 +62,49 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setUploadError(null);
+    setUploadProgress({});
+
+    if (!designFile || !thumbnailFile) {
+      setUploadError('Please select both a design file and a thumbnail image.');
+      return;
+    }
+
     const priceValue = parseFloat(String(formData.price_cents));
+    const tagsArray = formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
 
-    const payload = {
-      ...formData,
-      price_cents: Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0,
-      stitches: parseInt(formData.stitches) || null,
-      colors: parseInt(formData.colors) || null,
-      width_mm: parseFloat(formData.width_mm) || null,
-      height_mm: parseFloat(formData.height_mm) || null,
-      tags: formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean),
-    };
+    const form = new FormData();
+    form.append('title', formData.title);
+    form.append('description', formData.description);
+    form.append('price_cents', String(Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0));
+    form.append('category_id', formData.category_id);
+    form.append('collection_id', formData.collection_id);
+    form.append('stitches', formData.stitches);
+    form.append('colors', formData.colors);
+    form.append('width_mm', formData.width_mm);
+    form.append('height_mm', formData.height_mm);
+    form.append('is_active', formData.is_active ? 'true' : 'false');
+    form.append('is_featured', formData.is_featured ? 'true' : 'false');
+    tagsArray.forEach((tag: string) => form.append('tags[]', tag));
+    form.append('design_file', designFile);
+    form.append('thumbnail_file', thumbnailFile);
 
-    saveMutation.mutate(payload);
+    try {
+      await api.post('/admin/designs', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            setUploadProgress({ asset: Math.round((progressEvent.loaded / progressEvent.total) * 100) });
+          }
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ['designs'] });
+      onClose();
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.error || 'Failed to upload design.');
+    }
   };
 
   return (
@@ -88,6 +120,37 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* File Uploads */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Design Files</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Design File (.zip) *</label>
+              <input
+                type="file"
+                accept=".zip"
+                required
+                className="input"
+                onChange={e => setDesignFile(e.target.files?.[0] || null)}
+              />
+              {uploadProgress.asset !== undefined && (
+                <div className="text-xs text-gray-500 mt-1">Upload: {uploadProgress.asset}%</div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image (JPG/PNG) *</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                required
+                className="input"
+                onChange={e => setThumbnailFile(e.target.files?.[0] || null)}
+              />
+              {uploadProgress.thumbnail !== undefined && (
+                <div className="text-xs text-gray-500 mt-1">Upload: {uploadProgress.thumbnail}%</div>
+              )}
+            </div>
+          </div>
+
           {/* Basic Info */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Basic Information</h3>
@@ -270,6 +333,11 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
               </label>
             </div>
           </div>
+
+          {/* Upload/Error Feedback */}
+          {uploadError && (
+            <div className="text-red-600 text-sm font-medium">{uploadError}</div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t">
