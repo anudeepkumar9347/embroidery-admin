@@ -14,17 +14,13 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
 
   const [formData, setFormData] = useState({
     title: design?.title || '',
+    slug: design?.slug || '',
     description: design?.description || '',
-    price_cents: design?.price_cents ? design.price_cents / 100 : '',
-    category_id: design?.category_id || '',
-    collection_id: design?.collection_id || '',
-    stitches: design?.stitches || '',
-    colors: design?.colors || '',
-    width_mm: design?.width_mm || '',
-    height_mm: design?.height_mm || '',
+    priceCents: design?.price_cents ? design.price_cents / 100 : '',
+    categoryId: design?.category_id || '',
+    collectionId: design?.collection_id || '',
     tags: design?.tags?.join(', ') || '',
-    is_active: design?.is_active ?? true,
-    is_featured: design?.is_featured ?? false,
+    licenseType: design?.license_type || 'single-use',
   });
 
   const [designFile, setDesignFile] = useState<File | null>(null);
@@ -72,34 +68,42 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
       return;
     }
 
-    const priceValue = parseFloat(String(formData.price_cents));
+    const priceValue = parseFloat(String(formData.priceCents));
     const tagsArray = formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
 
-    const form = new FormData();
-    form.append('title', formData.title);
-    form.append('description', formData.description);
-    form.append('price_cents', String(Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0));
-    form.append('category_id', formData.category_id);
-    form.append('collection_id', formData.collection_id);
-    form.append('stitches', formData.stitches);
-    form.append('colors', formData.colors);
-    form.append('width_mm', formData.width_mm);
-    form.append('height_mm', formData.height_mm);
-    form.append('is_active', formData.is_active ? 'true' : 'false');
-    form.append('is_featured', formData.is_featured ? 'true' : 'false');
-    tagsArray.forEach((tag: string) => form.append('tags[]', tag));
-    form.append('design_file', designFile);
-    form.append('thumbnail_file', thumbnailFile);
+    // Step 1: Create design record
+    let designPayload = {
+      title: formData.title,
+      slug: formData.slug,
+      description: formData.description,
+      priceCents: Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0,
+      categoryId: formData.categoryId || undefined,
+      collectionId: formData.collectionId || undefined,
+      tags: tagsArray,
+      licenseType: formData.licenseType,
+    };
 
     try {
-      await api.post('/admin/designs', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent: any) => {
-          if (progressEvent.total) {
-            setUploadProgress({ asset: Math.round((progressEvent.loaded / progressEvent.total) * 100) });
-          }
-        },
+      const response = await api.post('/admin/designs', designPayload);
+      const { design, uploadUrls } = response.data;
+
+      // Step 2: Upload files to S3 using presigned URLs
+      // Asset file
+      await fetch(uploadUrls.asset, {
+        method: 'PUT',
+        body: designFile,
+        headers: { 'Content-Type': 'application/zip' },
       });
+      setUploadProgress((prev) => ({ ...prev, asset: 100 }));
+
+      // Thumbnail file
+      await fetch(uploadUrls.thumbnail, {
+        method: 'PUT',
+        body: thumbnailFile,
+        headers: { 'Content-Type': 'image/jpeg' },
+      });
+      setUploadProgress((prev) => ({ ...prev, thumbnail: 100 }));
+
       queryClient.invalidateQueries({ queryKey: ['designs'] });
       onClose();
     } catch (err: any) {
