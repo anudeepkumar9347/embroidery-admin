@@ -10,25 +10,20 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add API key and auth token
+// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
-    
-    // Add API secret key if configured
-    if (API_SECRET_KEY) {
-      config.headers['x-api-key'] = API_SECRET_KEY;
-    }
-    
-    // Add JWT token
+
+    // Do NOT send server-side secrets from browser bundles. Admin UI should rely on admin JWTs.
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Set timeout to detect hanging requests
     config.timeout = 30000; // 30 seconds
-    
+
     return config;
   },
   (error) => {
