@@ -22,6 +22,7 @@ export default function Designs() {
       return response.data;
     },
   });
+  const [previewDesign, setPreviewDesign] = useState<any>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/designs/${id}`),
@@ -75,9 +76,17 @@ export default function Designs() {
                 {data?.designs?.length > 0 ? (
                   data.designs.map((design: any) => (
                     <tr key={design.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="w-16 h-16 bg-gray-200 rounded"></div>
-                      </td>
+                        <td className="py-3 px-4">
+                          {design.thumbnail_key ? (
+                            <img
+                              src={design.thumbnail_key}
+                              alt={design.title}
+                              className="w-16 h-16 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-200 rounded"></div>
+                          )}
+                        </td>
                       <td className="py-3 px-4 font-medium">{design.title}</td>
                       <td className="py-3 px-4">{design.category?.name || 'N/A'}</td>
                       <td className="py-3 px-4">{formatInr(design.price_cents)}</td>
@@ -100,6 +109,13 @@ export default function Designs() {
                             title="Edit"
                           >
                             <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => setPreviewDesign(design)}
+                            className="p-2 hover:bg-gray-100 rounded"
+                            title="Preview"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                           </button>
                           <button
                             onClick={() => deleteMutation.mutate(design.id)}
@@ -126,6 +142,34 @@ export default function Designs() {
 
       {showForm && (
         <DesignForm design={selectedDesign} onClose={handleCloseForm} />
+      )}
+
+      {previewDesign && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">{previewDesign.title}</h3>
+              <button onClick={() => setPreviewDesign(null)} className="p-2">Close</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                {previewDesign.thumbnail_key ? (
+                  <img src={previewDesign.thumbnail_key} alt={previewDesign.title} className="w-full h-64 object-contain" />
+                ) : (
+                  <div className="w-full h-64 bg-gray-100 flex items-center justify-center">No preview</div>
+                )}
+              </div>
+              <div>
+                <p className="mb-2">Price: {formatInr(previewDesign.price_cents)}</p>
+                <p className="mb-2">Category: {previewDesign.category_name || 'N/A'}</p>
+                <p className="mb-4">Description: {previewDesign.description || '—'}</p>
+                {previewDesign.asset_key && (
+                  <a href={previewDesign.asset_key} target="_blank" rel="noreferrer" className="btn btn-primary inline-block">Download Asset</a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

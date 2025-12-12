@@ -7,6 +7,7 @@ export default function Collections() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const [editingCollection, setEditingCollection] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['collections'],
@@ -22,6 +23,16 @@ export default function Collections() {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
       setShowModal(false);
       setFormData({ name: '', description: '' });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.put(`/admin/collections/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      setShowModal(false);
+      setFormData({ name: '', description: '' });
+      setEditingCollection(null);
     },
   });
 
@@ -59,7 +70,14 @@ export default function Collections() {
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-xl">{collection.name}</h3>
                     <div className="flex gap-2">
-                      <button className="p-2 hover:bg-gray-100 rounded">
+                      <button
+                        className="p-2 hover:bg-gray-100 rounded"
+                        onClick={() => {
+                          setEditingCollection(collection);
+                          setFormData({ name: collection.name || '', description: collection.description || '' });
+                          setShowModal(true);
+                        }}
+                      >
                         <Edit size={16} />
                       </button>
                       <button
@@ -91,11 +109,15 @@ export default function Collections() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add Collection</h2>
+            <h2 className="text-xl font-bold mb-4">{editingCollection ? 'Edit Collection' : 'Add Collection'}</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                createMutation.mutate(formData);
+                if (editingCollection) {
+                  updateMutation.mutate({ id: editingCollection.id, data: formData });
+                } else {
+                  createMutation.mutate(formData);
+                }
               }}
             >
               <div className="mb-4">
@@ -128,13 +150,17 @@ export default function Collections() {
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingCollection(null);
+                    setFormData({ name: '', description: '' });
+                  }}
                   className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Create
+                  {editingCollection ? (updateMutation.isPending ? 'Saving...' : 'Save') : (createMutation.isPending ? 'Creating...' : 'Create')}
                 </button>
               </div>
             </form>

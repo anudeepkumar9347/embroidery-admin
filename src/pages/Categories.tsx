@@ -7,6 +7,7 @@ export default function Categories() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['categories'],
@@ -22,6 +23,16 @@ export default function Categories() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setShowModal(false);
       setName('');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.put(`/admin/categories/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      setShowModal(false);
+      setName('');
+      setEditingCategory(null);
     },
   });
 
@@ -64,7 +75,15 @@ export default function Categories() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <button className="p-2 hover:bg-gray-100 rounded">
+                      <button
+                        onClick={() => {
+                          setEditingCategory(category);
+                          setName(category.name || '');
+                          setShowModal(true);
+                        }}
+                        className="p-2 hover:bg-gray-100 rounded"
+                        title="Edit"
+                      >
                         <Edit size={16} />
                       </button>
                       <button
@@ -90,11 +109,15 @@ export default function Categories() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add Category</h2>
+            <h2 className="text-xl font-bold mb-4">{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                createMutation.mutate({ name });
+                if (editingCategory) {
+                  updateMutation.mutate({ id: editingCategory.id, data: { name } });
+                } else {
+                  createMutation.mutate({ name });
+                }
               }}
             >
               <div className="mb-4">
@@ -112,13 +135,17 @@ export default function Categories() {
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingCategory(null);
+                    setName('');
+                  }}
                   className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Create
+                  {editingCategory ? (updateMutation.isPending ? 'Saving...' : 'Save') : (createMutation.isPending ? 'Creating...' : 'Create')}
                 </button>
               </div>
             </form>

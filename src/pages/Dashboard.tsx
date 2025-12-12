@@ -1,6 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { TrendingUp, ShoppingCart, DollarSign, Users } from 'lucide-react';
+// no local state required here
+
+function useRecentOrders() {
+  return useQuery({
+    queryKey: ['dashboard-recent-orders'],
+    queryFn: async () => {
+      const resp = await api.get('/admin/orders?page=1&limit=5');
+      return resp.data.orders;
+    },
+  });
+}
+
+function usePopularDesigns() {
+  return useQuery({
+    queryKey: ['dashboard-popular-designs'],
+    queryFn: async () => {
+      const resp = await api.get('/admin/designs?page=1&limit=5');
+      return resp.data.designs;
+    },
+  });
+}
 
 export default function Dashboard() {
   const { data: stats } = useQuery({
@@ -14,7 +35,7 @@ export default function Dashboard() {
   const statCards = [
     {
       title: 'Total Revenue',
-      value: stats?.revenue ? `$${(stats.revenue / 100).toFixed(2)}` : '$0.00',
+      value: stats?.revenue ? `₹${(stats.revenue / 100).toFixed(2)}` : '₹0.00',
       change: '+12.5%',
       icon: DollarSign,
       color: 'text-green-600',
@@ -46,6 +67,9 @@ export default function Dashboard() {
     },
   ];
 
+  const { data: recentOrders } = useRecentOrders();
+  const { data: popular } = usePopularDesigns();
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
@@ -73,12 +97,35 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Recent Orders</h2>
-          <div className="text-sm text-gray-500">No recent orders</div>
+          {recentOrders?.length ? (
+            <ul className="space-y-2 text-sm">
+              {recentOrders.map((o: any) => (
+                <li key={o.id} className="flex justify-between">
+                  <span>#{o.id.slice(0,8)}</span>
+                  <span>{o.user_email}</span>
+                  <span>₹{(o.total_cents/100).toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-sm text-gray-500">No recent orders</div>
+          )}
         </div>
 
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Popular Designs</h2>
-          <div className="text-sm text-gray-500">No data available</div>
+          {popular?.length ? (
+            <ul className="space-y-2 text-sm">
+              {popular.map((d: any) => (
+                <li key={d.id} className="flex justify-between">
+                  <span>{d.title}</span>
+                  <span>₹{(d.price_cents/100).toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-sm text-gray-500">No data available</div>
+          )}
         </div>
       </div>
     </div>

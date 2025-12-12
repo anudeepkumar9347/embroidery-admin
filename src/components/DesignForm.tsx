@@ -85,15 +85,34 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
     e.preventDefault();
     setUploadError(null);
     setUploadProgress({});
-
-    if (!designFile || !thumbnailFile) {
-      setUploadError('Please select both a design file and a thumbnail image.');
-      return;
-    }
-
     const priceValue = parseFloat(String(formData.priceCents));
     const tagsArray = formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
 
+    // If editing and no files selected, send JSON payload to PUT endpoint
+    if (isEditing && !designFile && !thumbnailFile) {
+      const payload: any = {
+        title: formData.title,
+        description: formData.description,
+        priceCents: Number.isFinite(priceValue) ? Math.round(priceValue * 100) : 0,
+        categoryId: formData.categoryId || null,
+        collectionId: formData.collectionId || null,
+        tags: tagsArray.length ? tagsArray : null,
+        isActive: formData.is_active,
+        isFeatured: formData.is_featured,
+      };
+
+      try {
+        await api.put(`/admin/${isEditing ? `designs/${design.id}` : 'designs'}`, payload);
+        queryClient.invalidateQueries({ queryKey: ['designs'] });
+        onClose();
+      } catch (err: any) {
+        setUploadError(err?.response?.data?.error || 'Failed to save design.');
+      }
+
+      return;
+    }
+
+    // Otherwise use FormData (create or update with files)
     const form = new FormData();
     form.append('title', formData.title);
     form.append('slug', formData.slug);
@@ -103,18 +122,29 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
     if (formData.collectionId) form.append('collectionId', formData.collectionId);
     form.append('licenseType', formData.licenseType);
     tagsArray.forEach((tag: string) => form.append('tags', tag));
-    form.append('designFile', designFile);
-    form.append('thumbnailFile', thumbnailFile);
+    if (designFile) form.append('designFile', designFile);
+    if (thumbnailFile) form.append('thumbnailFile', thumbnailFile);
 
     try {
-      await api.post('/admin/designs', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent: any) => {
-          if (progressEvent.total) {
-            setUploadProgress({ asset: Math.round((progressEvent.loaded / progressEvent.total) * 100) });
-          }
-        },
-      });
+      if (isEditing) {
+        await api.put(`/admin/designs/${design.id}`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent: any) => {
+            if (progressEvent.total) {
+              setUploadProgress({ asset: Math.round((progressEvent.loaded / progressEvent.total) * 100) });
+            }
+          },
+        });
+      } else {
+        await api.post('/admin/designs', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent: any) => {
+            if (progressEvent.total) {
+              setUploadProgress({ asset: Math.round((progressEvent.loaded / progressEvent.total) * 100) });
+            }
+          },
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['designs'] });
       onClose();
     } catch (err: any) {
@@ -139,11 +169,11 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Design Files</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Design File (.zip) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Design File (.zip) {isEditing ? '(optional)' : '*'}</label>
               <input
                 type="file"
                 accept=".zip"
-                required
+                required={!isEditing}
                 className="input"
                 onChange={e => setDesignFile(e.target.files?.[0] || null)}
               />
@@ -152,11 +182,11 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image (JPG/PNG) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image (JPG/PNG) {isEditing ? '(optional)' : '*'}</label>
               <input
                 type="file"
                 accept="image/jpeg,image/png"
-                required
+                required={!isEditing}
                 className="input"
                 onChange={e => setThumbnailFile(e.target.files?.[0] || null)}
               />
