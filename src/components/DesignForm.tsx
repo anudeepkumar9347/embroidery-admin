@@ -177,6 +177,11 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
                 className="input"
                 onChange={e => setDesignFile(e.target.files?.[0] || null)}
               />
+              {isEditing && design?.asset_key && (
+                <div className="text-sm text-gray-600 mt-1">
+                  Current asset key: <span className="font-mono">{design.asset_key}</span>
+                </div>
+              )}
               {uploadProgress.asset !== undefined && (
                 <div className="text-xs text-gray-500 mt-1">Upload: {uploadProgress.asset}%</div>
               )}
@@ -190,6 +195,12 @@ export default function DesignForm({ design, onClose }: DesignFormProps) {
                 className="input"
                 onChange={e => setThumbnailFile(e.target.files?.[0] || null)}
               />
+              {isEditing && design?.thumbnail_key && (
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={design.thumbnail_key} alt="thumbnail" className="w-20 h-20 object-cover rounded" />
+                  <div className="text-sm text-gray-600">Current thumbnail</div>
+                </div>
+              )}
               {uploadProgress.thumbnail !== undefined && (
                 <div className="text-xs text-gray-500 mt-1">Upload: {uploadProgress.thumbnail}%</div>
               )}
