@@ -1,10 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 
+type UsersResponse = {
+  users: Array<{
+    id: string;
+    email: string;
+    display_name?: string | null;
+    role: string;
+    is_active: boolean;
+    created_at: string;
+  }>;
+  pagination?: { page: number; limit: number; total: number; pages: number };
+};
+
 function useUsers(page = 1, limit = 50) {
-  return useQuery(['admin-users', page, limit], async () => {
-    const resp = await api.get(`/admin/users?page=${page}&limit=${limit}`);
-    return resp.data;
+  return useQuery<UsersResponse, Error>({
+    queryKey: ['admin-users', page, limit],
+    queryFn: async () => {
+      const resp = await api.get(`/admin/users?page=${page}&limit=${limit}`);
+      return resp.data as UsersResponse;
+    },
   });
 }
 
@@ -28,7 +43,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {data.users.map((u: any) => (
+              {data!.users.map((u) => (
                 <tr key={u.id} className="border-t">
                   <td className="p-2">{u.email}</td>
                   <td className="p-2">{u.display_name || '-'}</td>
