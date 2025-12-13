@@ -6,6 +6,7 @@ import Designs from './pages/Designs';
 import Orders from './pages/Orders';
 import Categories from './pages/Categories';
 import Collections from './pages/Collections';
+import Users from './pages/Users';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/designs" element={<Designs />} />
+                    <Route path="/users" element={<Users />} />
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/categories" element={<Categories />} />
                     <Route path="/collections" element={<Collections />} />

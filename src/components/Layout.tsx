@@ -8,6 +8,7 @@ import {
   ShoppingCart, 
   FolderTree, 
   Layers, 
+  Users,
   LogOut 
 } from 'lucide-react';
 
@@ -17,6 +18,7 @@ interface LayoutProps {
 
 const menuItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/users', label: 'Users', icon: Users },
   { path: '/designs', label: 'Designs', icon: Image },
   { path: '/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/categories', label: 'Categories', icon: FolderTree },
