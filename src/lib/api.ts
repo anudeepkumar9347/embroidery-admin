@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// Ensure the configured base URL always includes the `/api` prefix.
+// This avoids 404s when deploy-time env vars omit the `/api` suffix.
+const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = rawBase.endsWith('/api') ? rawBase : rawBase.replace(/\/$/, '') + '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
