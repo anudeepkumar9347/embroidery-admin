@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Star } from 'lucide-react';
 import DesignForm from '../components/DesignForm';
 
 const formatInr = (cents: number) => {
@@ -26,6 +26,14 @@ export default function Designs() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/designs/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['designs'] });
+    },
+  });
+
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: ({ id, isFeatured }: { id: string; isFeatured: boolean }) =>
+      api.patch(`/admin/designs/${id}/featured`, { isFeatured }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['designs'] });
     },
@@ -68,6 +76,7 @@ export default function Designs() {
                   <th className="text-left py-3 px-4">Title</th>
                   <th className="text-left py-3 px-4">Category</th>
                   <th className="text-left py-3 px-4">Price</th>
+                  <th className="text-left py-3 px-4">Featured</th>
                   <th className="text-left py-3 px-4">Status</th>
                   <th className="text-right py-3 px-4">Actions</th>
                 </tr>
@@ -90,6 +99,22 @@ export default function Designs() {
                       <td className="py-3 px-4 font-medium">{design.title}</td>
                       <td className="py-3 px-4">{design.category?.name || 'N/A'}</td>
                       <td className="py-3 px-4">{formatInr(design.price_cents)}</td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => toggleFeaturedMutation.mutate({
+                            id: design.id,
+                            isFeatured: !design.is_featured
+                          })}
+                          className={`p-2 rounded ${
+                            design.is_featured
+                              ? 'text-yellow-600 bg-yellow-50 hover:bg-yellow-100'
+                              : 'text-gray-400 hover:bg-gray-100'
+                          }`}
+                          title={design.is_featured ? 'Remove from featured' : 'Add to featured'}
+                        >
+                          <Star size={18} fill={design.is_featured ? 'currentColor' : 'none'} />
+                        </button>
+                      </td>
                       <td className="py-3 px-4">
                         <span
                           className={`px-2 py-1 rounded text-xs ${
@@ -129,7 +154,7 @@ export default function Designs() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-gray-500">
+                    <td colSpan={7} className="text-center py-8 text-gray-500">
                       No designs found
                     </td>
                   </tr>

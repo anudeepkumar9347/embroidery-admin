@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
 
 export default function Categories() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [imageKey, setImageKey] = useState('');
   const [editingCategory, setEditingCategory] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
@@ -23,6 +25,8 @@ export default function Categories() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setShowModal(false);
       setName('');
+      setDescription('');
+      setImageKey('');
     },
   });
 
@@ -32,6 +36,8 @@ export default function Categories() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setShowModal(false);
       setName('');
+      setDescription('');
+      setImageKey('');
       setEditingCategory(null);
     },
   });
@@ -67,9 +73,26 @@ export default function Categories() {
                   key={category.id}
                   className="p-4 border rounded-lg hover:shadow-md transition-shadow"
                 >
+                  {category.image_key && (
+                    <div className="mb-3 w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                      <img
+                        src={category.image_key}
+                        alt={category.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  {!category.image_key && (
+                    <div className="mb-3 w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <ImageIcon size={32} className="text-gray-400" />
+                    </div>
+                  )}
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-semibold text-lg">{category.name}</h3>
+                      {category.description && (
+                        <p className="text-sm text-gray-600 mt-1">{category.description}</p>
+                      )}
                       <p className="text-sm text-gray-500 mt-1">
                         {category.designs_count || 0} designs
                       </p>
@@ -79,6 +102,8 @@ export default function Categories() {
                         onClick={() => {
                           setEditingCategory(category);
                           setName(category.name || '');
+                          setDescription(category.description || '');
+                          setImageKey(category.image_key || '');
                           setShowModal(true);
                         }}
                         className="p-2 hover:bg-gray-100 rounded"
@@ -114,9 +139,12 @@ export default function Categories() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (editingCategory) {
-                  updateMutation.mutate({ id: editingCategory.id, data: { name } });
+                  updateMutation.mutate({ 
+                    id: editingCategory.id, 
+                    data: { name, description, imageKey } 
+                  });
                 } else {
-                  createMutation.mutate({ name });
+                  createMutation.mutate({ name, description, imageKey });
                 }
               }}
             >
@@ -132,6 +160,36 @@ export default function Categories() {
                   required
                 />
               </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="input resize-none"
+                  rows={3}
+                  placeholder="Brief description of the category"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Image URL
+                </label>
+                <input
+                  type="text"
+                  value={imageKey}
+                  onChange={(e) => setImageKey(e.target.value)}
+                  className="input"
+                  placeholder="https://example.com/category-image.jpg"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the full URL to the category image
+                </p>
+              </div>
+
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
@@ -139,6 +197,8 @@ export default function Categories() {
                     setShowModal(false);
                     setEditingCategory(null);
                     setName('');
+                    setDescription('');
+                    setImageKey('');
                   }}
                   className="btn btn-secondary"
                 >

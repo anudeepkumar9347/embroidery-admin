@@ -7,6 +7,7 @@ import Orders from './pages/Orders';
 import Categories from './pages/Categories';
 import Collections from './pages/Collections';
 import Users from './pages/Users';
+import Banners from './pages/Banners';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ function App() {
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/categories" element={<Categories />} />
                     <Route path="/collections" element={<Collections />} />
+                    <Route path="/banners" element={<Banners />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>

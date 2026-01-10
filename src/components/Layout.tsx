@@ -9,7 +9,8 @@ import {
   FolderTree, 
   Layers, 
   Users,
-  LogOut 
+  LogOut,
+  MonitorPlay
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -20,6 +21,7 @@ const menuItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/users', label: 'Users', icon: Users },
   { path: '/designs', label: 'Designs', icon: Image },
+  { path: '/banners', label: 'Banners', icon: MonitorPlay },
   { path: '/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/categories', label: 'Categories', icon: FolderTree },
   { path: '/collections', label: 'Collections', icon: Layers },
