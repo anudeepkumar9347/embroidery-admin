@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
-import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, Upload } from 'lucide-react';
 
 export default function Categories() {
   const queryClient = useQueryClient();
@@ -10,6 +10,9 @@ export default function Categories() {
   const [description, setDescription] = useState('');
   const [imageKey, setImageKey] = useState('');
   const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['categories'],
@@ -136,15 +139,40 @@ export default function Categories() {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">{editingCategory ? 'Edit Category' : 'Add Category'}</h2>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
+                
+                let finalImageKey = imageKey;
+                
+                // Upload file if selected
+                if (selectedFile) {
+                  setUploading(true);
+                  try {
+                    const formData = new FormData();
+                    formData.append('image', selectedFile);
+                    formData.append('folder', 'categories');
+                    
+                    const uploadResponse = await api.post('/admin/upload-image', formData, {
+                      headers: { 'Content-Type': 'multipart/form-data' },
+                    });
+                    
+                    finalImageKey = uploadResponse.data.url;
+                  } catch (error) {
+                    console.error('Upload failed:', error);
+                    alert('Failed to upload image');
+                    setUploading(false);
+                    return;
+                  }
+                  setUploading(false);
+                }
+                
                 if (editingCategory) {
                   updateMutation.mutate({ 
                     id: editingCategory.id, 
-                    data: { name, description, imageKey } 
+                    data: { name, description, imageKey: finalImageKey } 
                   });
                 } else {
-                  createMutation.mutate({ name, description, imageKey });
+                  createMutation.mutate({ name, description, imageKey: finalImageKey });
                 }
               }}
             >
@@ -176,18 +204,75 @@ export default function Categories() {
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Image URL
+                  Category Image
                 </label>
-                <input
-                  type="text"
-                  value={imageKey}
-                  onChange={(e) => setImageKey(e.target.value)}
-                  className="input"
-                  placeholder="https://example.com/category-image.jpg"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter the full URL to the category image
-                </p>
+                
+                {/* Image Preview */}
+                {(previewUrl || imageKey) && (
+                  <div className="mb-3 relative">
+                    <img
+                      src={previewUrl || imageKey}
+                      alt="Preview"
+                      className="w-full h-40 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewUrl('');
+                        setImageKey('');
+                        setSelectedFile(null);
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
+
+                {/* File Upload Button */}
+                <div className="mb-3">
+                  <label className="btn btn-secondary w-full cursor-pointer">
+                    <Upload size={16} className="inline mr-2" />
+                    {selectedFile ? selectedFile.name : 'Choose Image File'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedFile(file);
+                          setPreviewUrl(URL.createObjectURL(file));
+                          setImageKey(''); // Clear URL input when file is selected
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* URL Input Alternative */}
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex-1 border-t border-gray-300"></div>
+                    <span className="text-xs text-gray-500">OR</span>
+                    <div className="flex-1 border-t border-gray-300"></div>
+                  </div>
+                  <input
+                    type="text"
+                    value={imageKey}
+                    onChange={(e) => {
+                      setImageKey(e.target.value);
+                      setSelectedFile(null); // Clear file when URL is entered
+                      setPreviewUrl('');
+                    }}
+                    className="input"
+                    placeholder="https://example.com/image.jpg"
+                    disabled={!!selectedFile}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Paste an image URL
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-3 justify-end">
@@ -199,13 +284,15 @@ export default function Categories() {
                     setName('');
                     setDescription('');
                     setImageKey('');
+                    setSelectedFile(null);
+                    setPreviewUrl('');
                   }}
                   className="btn btn-secondary"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingCategory ? (updateMutation.isPending ? 'Saving...' : 'Save') : (createMutation.isPending ? 'Creating...' : 'Create')}
+                <button type="submit" className="btn btn-primary" disabled={uploading || createMutation.isPending || updateMutation.isPending}>
+                  {uploading ? 'Uploading...' : editingCategory ? (updateMutation.isPending ? 'Saving...' : 'Save') : (createMutation.isPending ? 'Creating...' : 'Create')}
                 </button>
               </div>
             </form>

@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
-import { Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, Upload, X } from 'lucide-react';
 
 export default function Banners() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['banners'],
@@ -39,24 +42,52 @@ export default function Banners() {
 
   const handleEdit = (banner: any) => {
     setSelectedBanner(banner);
+    setPreviewUrl(banner.image_key || '');
+    setSelectedFile(null);
     setShowForm(true);
   };
 
   const handleAdd = () => {
     setSelectedBanner(null);
+    setPreviewUrl('');
+    setSelectedFile(null);
     setShowForm(true);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    let finalImageKey = formData.get('imageKey') as string;
+    
+    // Upload file if selected
+    if (selectedFile) {
+      setUploading(true);
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('image', selectedFile);
+        uploadFormData.append('folder', 'banners');
+        
+        const uploadResponse = await api.post('/admin/upload-image', uploadFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        finalImageKey = uploadResponse.data.url;
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert('Failed to upload image');
+        setUploading(false);
+        return;
+      }
+      setUploading(false);
+    }
     
     const banner = {
       id: selectedBanner?.id,
       title: formData.get('title'),
       subtitle: formData.get('subtitle'),
       description: formData.get('description'),
-      imageKey: formData.get('imageKey'),
+      imageKey: finalImageKey,
       linkType: formData.get('linkType'),
       linkId: formData.get('linkId') || null,
       externalUrl: formData.get('externalUrl') || null,
@@ -128,22 +159,80 @@ export default function Banners() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Image URL *
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Banner Image *
+              </label>
+              
+              {/* Image Preview */}
+              {(previewUrl || selectedBanner?.image_key) && (
+                <div className="mb-3 relative">
+                  <img
+                    src={previewUrl || selectedBanner?.image_key}
+                    alt="Preview"
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewUrl('');
+                      setSelectedFile(null);
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* File Upload Button */}
+              <div className="mb-3">
+                <label className="btn btn-secondary w-full cursor-pointer flex items-center justify-center gap-2">
+                  <Upload size={16} />
+                  {selectedFile ? selectedFile.name : 'Choose Image File'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        setPreviewUrl(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
                 </label>
+              </div>
+
+              {/* URL Input Alternative */}
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1 border-t border-gray-300"></div>
+                  <span className="text-xs text-gray-500">OR</span>
+                  <div className="flex-1 border-t border-gray-300"></div>
+                </div>
                 <input
                   type="url"
                   name="imageKey"
-                  required
                   defaultValue={selectedBanner?.image_key}
                   className="input w-full"
                   placeholder="https://..."
+                  disabled={!!selectedFile}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSelectedFile(null);
+                      setPreviewUrl(e.target.value);
+                    }
+                  }}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Paste an image URL
+                </p>
               </div>
+            </div>
 
-              <div>
+            <div className="grid grid-cols-2 gap-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Link Type *
                 </label>
@@ -216,14 +305,16 @@ export default function Banners() {
             </div>
 
             <div className="flex gap-2">
-              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving...' : 'Save Banner'}
+              <button type="submit" className="btn btn-primary" disabled={uploading || saveMutation.isPending}>
+                {uploading ? 'Uploading...' : saveMutation.isPending ? 'Saving...' : 'Save Banner'}
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setShowForm(false);
                   setSelectedBanner(null);
+                  setSelectedFile(null);
+                  setPreviewUrl('');
                 }}
                 className="btn btn-secondary"
               >
